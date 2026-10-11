@@ -29,6 +29,14 @@ def select_pdf_files():
     )
     return file_paths
 
+def select_output_excel():
+    """追記先のExcelファイルを選択する"""
+    file_path = filedialog.askopenfilename(
+        title="【2/2】追記先のExcelファイルを選択してください（キャンセルで新規作成）",
+        filetypes=[("Excelファイル", "*.xlsx")]
+    )
+    return file_path
+
 def pdf_to_image(pdf_path):
     """PDFの1ページ目を高解像度画像に変換する"""
     # 修正: fitz.open() から pymupdf.open() に変更
@@ -51,8 +59,8 @@ def extract_business_card_info(image):
     - address: 会社の住所
     """
 
-    max_retries = 3  # 最大再試行回数
-    retry_delay = 5  # 待機する秒数
+    max_retries = 5  # 最大再試行回数
+    retry_delay = 10  # 待機する秒数
 
     for attempt in range(max_retries):
         try:
@@ -85,7 +93,15 @@ def main():
         print("ファイルが選択されませんでした。処理を終了します。")
         return
 
-    print(f"{len(pdf_paths)}件のファイルが選択されました。AIによる解析を開始します...")
+    print("出力先Excelの選択ダイアログを開いています...")
+    existing_excel_path = select_output_excel()
+    if existing_excel_path:
+        print(f"追記モード: '{os.path.basename(existing_excel_path)}' にデータを追加します。")
+    else:
+        print("新規作成モード: 新しいExcelファイルを作成します。")
+
+
+    print(f"\n{len(pdf_paths)}件のファイルが選択されました。AIによる解析を開始します...")
 
     extracted_data = []
 
@@ -105,13 +121,13 @@ def main():
             print(f"  -> エラーが発生しました: {e}")
 
     if extracted_data:
-        print("\nExcelファイルを作成しています...")
-        df = pd.DataFrame(extracted_data)
+        print("\nExcelファイルに書き込んでいます...")
+        new_df = pd.DataFrame(extracted_data)
 
         columns_order = ['company_name', 'department', 'name', 'email', 'phone', 'address', 'source_file']
-        df = df[[col for col in columns_order if col in df.columns]]
+        new_df = new_df[[col for col in columns_order if col in new_df.columns]]
 
-        df.rename(columns={
+        new_df.rename(columns={
             'company_name': '会社名',
             'department': '部署・役職',
             'name': '氏名',
@@ -121,8 +137,21 @@ def main():
             'source_file': '元PDFファイル名'
         }, inplace=True)
 
-        output_filename = "名刺データ一覧.xlsx"
-        df.to_excel(output_filename, index=False)
+        # 保存処理（追記 or 新規作成）
+        if existing_excel_path:
+            try:
+                # 既存のExcelを読み込んで結合
+                existing_df = pd.read_excel(existing_excel_path)
+                final_df = pd.concat([existing_df, new_df], ignore_index=True)
+                output_filename = existing_excel_path
+                final_df.to_excel(output_filename, index=False)
+            except Exception as e:
+                print(f"既存Excelの読み込み・保存に失敗しました。新規ファイルとして保存します。エラー: {e}")
+                output_filename = "名刺データ一覧_新規.xlsx"
+                new_df.to_excel(output_filename, index=False)
+        else:
+            output_filename = "名刺データ一覧.xlsx"
+            new_df.to_excel(output_filename, index=False)
 
         print(f"完了しました！ {len(extracted_data)}件のデータを '{output_filename}' に保存しました。")
 
