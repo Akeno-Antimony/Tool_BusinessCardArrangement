@@ -95,13 +95,36 @@ def main():
 
     print("出力先Excelの選択ダイアログを開いています...")
     existing_excel_path = select_output_excel()
+
+    processed_filenames = set()
     if existing_excel_path:
         print(f"追記モード: '{os.path.basename(existing_excel_path)}' にデータを追加します。")
+        try:
+            temp_df = pd.read_excel(existing_excel_path)
+            if '元PDFファイル名' in temp_df.columns:
+                processed_filenames = set(temp_df['元PDFファイル名'].dropna().tolist())
+        except Exception as e:
+            print(f"※既存ファイルの履歴読み込みに失敗しました: {e}")
     else:
         print("新規作成モード: 新しいExcelファイルを作成します。")
 
+    target_pdf_paths = []
+    for path in pdf_paths:
+        filename = os.path.basename(path)
+        if filename in processed_filenames:
+            print(f"スキップ: {filename} (処理済み)")
+        else:
+            target_pdf_paths.append(path)
 
-    print(f"\n{len(pdf_paths)}件のファイルが選択されました。AIによる解析を開始します...")
+    if not target_pdf_paths:
+        print("\n選択されたファイルはすべて処理済みでした。処理を終了します。")
+        root = tk.Tk()
+        root.withdraw()
+        root.attributes("-topmost", True)
+        messagebox.showinfo("処理完了", "選択されたファイルはすべて処理済みでした。\n追加するデータはありません。")
+        return
+
+    print(f"\n{len(target_pdf_paths)}件のファイルが解析対象です。AIによる解析を開始します...")
 
     extracted_data = []
 
