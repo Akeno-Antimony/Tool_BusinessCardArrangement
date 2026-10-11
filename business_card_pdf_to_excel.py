@@ -115,7 +115,6 @@ def main():
             print(f"スキップ: {filename} (処理済み)")
         else:
             target_pdf_paths.append(path)
-            time.sleep(10) # sleep for 10 seconds between AI process
 
     if not target_pdf_paths:
         print("\n選択されたファイルはすべて処理済みでした。処理を終了します。")
@@ -143,6 +142,8 @@ def main():
 
         except Exception as e:
             print(f"  -> エラーが発生しました: {e}")
+
+        time.sleep(10) # sleep for 10 seconds between AI process
 
     if extracted_data:
         print("\nExcelファイルに書き込んでいます...")
