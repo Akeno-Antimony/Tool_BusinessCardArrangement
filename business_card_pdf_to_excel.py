@@ -82,7 +82,11 @@ def extract_business_card_info(image):
                     time.sleep(retry_delay)
                     continue
 
-            # 503以外のエラー、または最大回数を超えた場合はエラーとして処理を中断
+            # 429エラー（exceeded）が含まれているか確認
+            if "429" in error_msg or "exceeded" in error_msg:
+                break
+
+            # 503/429以外のエラー、または最大回数を超えた場合はエラーとして処理を中断
             raise e
 
 def main():
@@ -128,9 +132,9 @@ def main():
 
     extracted_data = []
 
-    for i, pdf_path in enumerate(pdf_paths):
+    for i, pdf_path in enumerate(target_pdf_paths):
         filename = os.path.basename(pdf_path)
-        print(f"[{i+1}/{len(pdf_paths)}] 処理中: {filename}")
+        print(f"[{i+1}/{len(target_pdf_paths)}] 処理中: {filename}")
 
         try:
             img = pdf_to_image(pdf_path)
